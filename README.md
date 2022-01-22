@@ -1,2 +1,2 @@
-# HBN_SFOS_Cmake
+# HBN SFOS Cmake
 Extra cmake modules used to build software for SailfishOS.
