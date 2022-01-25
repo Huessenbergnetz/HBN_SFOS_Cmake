@@ -71,7 +71,7 @@ function(hbn_sfos_gen_translation target_name)
         message(FATAL_ERROR "Can not find translation source file ${_inputFile}")
     endif()
 
-    if (DEFINED INSTALL_DESTINATION)
+    if (DEFINED ARGS_INSTALL_DESTINATION)
             set(_installDest ${ARGS_INSTALL_DESTINATION})
         else()
             set(_installDest ${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/translations)
@@ -105,6 +105,6 @@ function(hbn_sfos_gen_translation target_name)
         VERBATIM
     )
 
-    install(FILES ${_qmFile} DESTINATION _installDest)
+    install(FILES ${_qmFile} DESTINATION ${_installDest})
 
 endfunction(hbn_sfos_gen_translation)

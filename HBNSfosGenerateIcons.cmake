@@ -139,7 +139,7 @@ function(hbn_sfos_gen_icons target_name)
         endif()
     endif()
 
-    if (DEFINED INSTALL_DESTINATION)
+    if (DEFINED ARGS_INSTALL_DESTINATION)
         set(_installDest ${ARGS_INSTALL_DESTINATION})
     else()
         set(_installDest ${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/icons)
