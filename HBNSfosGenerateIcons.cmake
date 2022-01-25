@@ -145,7 +145,11 @@ function(hbn_sfos_gen_icons target_name)
         set(_installDest ${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/icons)
     endif()
 
-    set(_inputFile ${ARGS_INPUT_FILE})
+    get_filename_component(_inputFile ${ARGS_INPUT_FILE} ABSOLUTE)
+
+    if (NOT EXISTS ${_inputFile})
+        message(FATAL_ERROR "Can not find icon source file ${_inputFile}")
+    endif()
 
     if (NOT TARGET ${target_name})
         add_custom_target(${target_name} ALL COMMENT "Generating icons")
@@ -161,7 +165,7 @@ function(hbn_sfos_gen_icons target_name)
             file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size})
             if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png)
                 add_custom_command(TARGET ${target_name} POST_BUILD
-                    COMMAND ${RSVGCONV} --width=${_size} --height=${_size} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png ${CMAKE_CURRENT_SOURCE_DIR}/${_inputFile}
+                    COMMAND ${RSVGCONV} --width=${_size} --height=${_size} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png ${_inputFile}
                     COMMENT "Generating application icon ${_fileBaseName}.png for size ${_size}x${_size}")
             endif()
             install(FILES ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps)
@@ -197,7 +201,7 @@ function(hbn_sfos_gen_icons target_name)
                     if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName})
                         execute_process(COMMAND bash "-c" "${PRINTFEXE} %.0f $(echo '${_scale} * ${_iconSize}' | ${BCEXE})" OUTPUT_VARIABLE _scaledSize)
                         add_custom_command(TARGET ${target_name} POST_BUILD
-                            COMMAND ${RSVGCONV} --width=${_scaledSize} --height=${_scaledSize} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName} ${CMAKE_CURRENT_SOURCE_DIR}/${_inputFile}
+                            COMMAND ${RSVGCONV} --width=${_scaledSize} --height=${_scaledSize} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName} ${_inputFile}
                             COMMENT "Generating theme icon ${_iconName} for scale ${_scale}")
                     endif ()
                     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName} DESTINATION ${_installDest}/z${_scale})
