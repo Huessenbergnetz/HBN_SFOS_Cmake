@@ -18,11 +18,11 @@ You can copy the files or, the better way, include the configuration into your p
 
 ### HBNSfosGenerateIcons
 
-This module provides the ``hbn_sfos_gen_icons`` function for generating SailfishOS specific icons for different sizes and pixel ratios / scales. It can be used to generate and install theme icons as well as application launcher icons. Have a look at the [source code documentation](https://github.com/Huessenbergnetz/HBN_SFOS_Cmake/blob/master/HBNSfosGenerateIcons.cmake) to learn how to use it.
+This module provides the ``hbn_sfos_add_appicon`` and ``hbn_sfos_add_icon`` functions for generating SailfishOS specific icons for different sizes and pixel ratios / scales. It can be used to generate and install theme icons as well as application launcher icons. Have a look at the [source code documentation](https://github.com/Huessenbergnetz/HBN_SFOS_Cmake/blob/master/HBNSfosGenerateIcons.cmake) to learn how to use it.
 
 ### HBNSfosGenerateTranslations
 
-This module provides the ``hbn_sfos_gen_translation`` function to generate
+This module provides the ``hbn_sfos_add_translation`` function to generate
 compiled translation files (.qm). Have a look at the [source code documentation](https://github.com/Huessenbergnetz/HBN_SFOS_Cmake/blob/master/HBNSfosGenerateTranslations.cmake) to learn how to use it.
 
 ## License

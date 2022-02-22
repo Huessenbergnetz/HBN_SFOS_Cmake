@@ -5,104 +5,127 @@
 HBNSfosGenerateIcons
 ------------------
 
-This module provides the ``hbn_sfos_gen_icons`` function for generating
-SailfishOS specific icons for different sizes and pixel ratios / scales.
-It can be used to generate and install theme icons as well as application
-launcher icons.
+This module provides the ``hbn_sfos_add_appicon`` and ``hbn_sfos_add_icon``
+functions for generating and installing SailfishOS specific icons for different
+sizes and pixel ratios / scales.
 
 ::
 
-  hbn_sfos_gen_icons(<target_name>
-      INPUT_FILE <input_file>
+  hbn_sfos_add_appicon(<VAR> file.svg [SIZES <size> [<size2> […]]])
+
+This function generates and installs application launcher icons from a
+input SVG file. The paths of the generated png files are stored to `VAR`.
+
+``SIZES`` optionally specifies a list of icon sizes to generatre. This
+accepts a list of integer values specifying the cions size to generate.
+By Default, if ``SIZES`` is not set, these are 86, 108, 128, 150 and 172.
+
+The generated icons will be installed to
+``${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps``.
+
+Example:
+
+.. code-block:: cmake
+
+  hbn_sfos_add_appicon(appIcons harbour-myapp.svg)
+
+  add_custom_target(generateAppIcons ALL
+                    DEPENDA ${appIcons}
+                    COMMENT "Generate application launcher icons"
+                    SOURCES harbour-myapp.svg)
+
+::
+
+  hbn_sfos_add_icon(<VAR> file1.svg [file2.svg]
       [SCALES <scale> [<scale2> […]]]
       [SIZES <size> [<size2> […]]]
       [INSTALL_DESTINATION <install_destination>]
-      [APPICON]
   )
 
-This function adds a target called <target_name> for the generation of
-icons from SVG input files. It requires the following external programs:
-rsvg-convert, printf and bc.
-
-It has two operational modes. One for creating theme icons of different
-sizes and scales/pixel ratios and one to create application launcher icons.
-By default it will create theme icons, to use application launcher icon
-mode, set the ``APPICON`` option.
+This function generates and install theme icons from input SVG files.
+The paths of the generated icons are stored to `VAR`.
 
 Theme icons are named after a specific scheme. If your input file for example
 is named feed.svg, the generated icons are named icon-xs-feed.png,
-icon-s-feed.png and so on. Application launcher icons are not renamed.
-
-``INPUT_FILE`` specifies the input file. Has to be a SVG file.
+icon-s-feed.png and so on.
 
 ``SCALES`` specifies a list of scales/pixel ratios to generate theme icons
 for. By default, if no ``SCALES`` have been set, icons will be created for
 the folowing pixel ratios: 1.0, 1.25, 1.5, 1.75 and 2.0.
 
-``SIZES`` specifies a list of icon sizes to generate. For theme icons, if
-not ``APPICON`` has been set, this accepts the following icon size indicators:
-xs, s, splus, m, l and xl. If ``SIZES`` has not been set, this list is also
-the default for theme icons. If ``APPICON`` is set to generate application
-launcher icons, this accepts a list of integer values specifying the icon
-size to generate. By default, if ``SIZES`` is not set, these are 86, 108,
-128, 150 and 172.
+``SIZES`` specifies a list of icon sizes to generate. This accepts the
+following icon size indicators: xs, s, splus, m, l and xl. If ``SIZES``
+has not been set, this list is also the default for theme icons.
 
 ``INSTALL_DESTINATION`` specifies the install destination for theme icons.
-Application launcher icons are installed to a fixed destination. By default,
-if ``INSTALL_DESTINATION`` has not been set, theme icons are installed into
-``${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/icons``. The target
-directory will contain subdirectories for every scale.
-
-``APPICON`` tells the function to operate in application launcher icon mode.
-This will change default values for some arguments and how arguments are
-handled.
+By default, if ``INSTALL_DESTINATION`` has not been set, theme icons are
+installed into ``${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/icons``.
+The target directory will contain subdirectories for every scale.
 
 Example usage (to generate theme icons with default values):
 
 .. code-block:: cmake
 
-  hbn_sfos_gen_icons(genicons
-      INPUT_FILE icon.svg
-  )
+  set(ICON_SIZES s m l)
 
-Example usage (to generate theme icons with custom settings):
+  set(ICONS icon1.svg icon2.svg icon4.svg)
 
-.. code-block:: cmake
+  hbn_sfos_add_icon(pngFiles ${ICONS} SIZES ${ICON_SIZES})
 
-  hbn_sfos_gen_icons(genicons
-      INPUT_FILE icon.svg
-      SCALES 1.0 1.5 2.0
-      SIZES s m l
-      INSTALL_DESTINATION share/harbour-myapp/assets/icons
-  )
-
-Example usage (to generate applicaion launcher icons):
-
-.. code-block:: cmake
-
-  hbn_sfos_gen_icons(genicons
-      INPUT_FILE habour-myapp.svg
-      APPICON
-  )
+  add_custom_target(myIcons ALL
+                    DEPENDS ${pngFiles}
+                    COMMENT "Generating icons"
+                    SOURCES ${ICONS})
 
 #]=======================================================================]
 
 include(CMakeParseArguments)
 include(GNUInstallDirs)
 
-function(hbn_sfos_gen_icons target_name)
-    set(options APPICON)
-    set(oneValueArgs INPUT_FILE INSTALL_DESTINATION)
-    set(multiValueArgs SCALES SIZES)
-    cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+function(hbn_sfos_add_appicon _png_files)
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs SIZES)
 
-    # check required args
-    list(APPEND _req_args INPUT_FILE)
-    foreach(_arg_name ${_req_args})
-        if(NOT DEFINED ARGS_${_arg_name})
-            message(FATAL_ERROR "${_arg_name} needs to be defined when calling hbn_sfos_gen_icons")
-        endif()
+    cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_svg_files ${ARGS_UNPARSED_ARGUMENTS})
+
+    find_program(RSVGCONV rsvg-convert)
+    if (NOT RSVGCONV)
+        message(FATAL_ERROR "Can not find rsvg-convert executable.")
+    endif (NOT RSVGCONV)
+
+    if (DEFINED ARGS_SIZES)
+        set(_sizes ${ARGS_SIZES})
+    else()
+        set(_sizes 86 108 128 150 172)
+    endif()
+
+    foreach(_current_FILE ${_svg_files})
+        get_filename_component(_abs_FILE ${_current_FILE} ABSOLUTE)
+        get_filename_component(png ${_abs_FILE} NAME_WE)
+        foreach(_size ${_sizes})
+            file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}")
+            set(_outputFile ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${png}.png)
+            add_custom_command(OUTPUT ${_outputFile}
+                COMMAND ${RSVGCONV}
+                ARGS --width=${_size} --height=${_size} --keep-aspect-ratio --output=${_outputFile} ${_abs_FILE}
+                DEPENDS ${_abs_FILE}
+            )
+        install(FILES ${_outputFile} DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps)
+        list(APPEND ${_png_files} ${_outputFile})
+        endforeach()
     endforeach()
+    set(${_png_files} ${${_png_files}} PARENT_SCOPE)
+endfunction()
+
+function(hbn_sfos_add_icon _png_files)
+    set(options)
+    set(oneValueArgs INSTALL_DESTINATION)
+    set(multiValueArgs SCALES SIZES)
+
+    cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_svg_files ${ARGS_UNPARSED_ARGUMENTS})
 
     find_program(RSVGCONV rsvg-convert)
     if (NOT RSVGCONV)
@@ -122,21 +145,13 @@ function(hbn_sfos_gen_icons target_name)
     if (DEFINED ARGS_SCALES)
         set(_scales ${ARGS_SCALES})
     else()
-        if (ARGS_APPICON)
-            set(_scales 1.0)
-        else()
-            set(_scales 1.0 1.25 1.5 1.75 2.0)
-        endif()
+        set(_scales 1.0 1.25 1.5 1.75 2.0)
     endif()
 
     if (DEFINED ARGS_SIZES)
         set(_sizes ${ARGS_SIZES})
     else()
-        if (ARGS_APPICON)
-            set(_sizes 86 108 128 150 172)
-        else()
-            set(_sizes xs s splus m l xl)
-        endif()
+        set(_sizes xs s splus m l xl)
     endif()
 
     if (DEFINED ARGS_INSTALL_DESTINATION)
@@ -145,40 +160,16 @@ function(hbn_sfos_gen_icons target_name)
         set(_installDest ${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/icons)
     endif()
 
-    get_filename_component(_inputFile ${ARGS_INPUT_FILE} ABSOLUTE)
-
-    if (NOT EXISTS ${_inputFile})
-        message(FATAL_ERROR "Can not find icon source file ${_inputFile}")
-    endif()
-
-    if (NOT TARGET ${target_name})
-        add_custom_target(${target_name} ALL COMMENT "Generating icons")
-    endif()
-
-    set_property(TARGET ${target_name} APPEND PROPERTY SOURCES ${_inputFile})
-
-    get_filename_component(_fileBaseName ${_inputFile} NAME_WE)
-
-    if (ARGS_APPICON)
-
-        foreach(_size ${_sizes})
-            file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size})
-            if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png)
-                add_custom_command(TARGET ${target_name} POST_BUILD
-                    COMMAND ${RSVGCONV} --width=${_size} --height=${_size} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png ${_inputFile}
-                    COMMENT "Generating application icon ${_fileBaseName}.png for size ${_size}x${_size}")
-            endif()
-            install(FILES ${CMAKE_CURRENT_BINARY_DIR}/apps/${_size}x${_size}/${_fileBaseName}.png DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${_size}x${_size}/apps)
-        endforeach(_size)
-
-    else()
+    foreach(_current_FILE ${_svg_files})
+        get_filename_component(_abs_FILE ${_current_FILE} ABSOLUTE)
+        get_filename_component(png ${_abs_FILE} NAME_WE)
 
         foreach(_scale ${_scales})
             file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale})
 
             foreach(_size ${_sizes})
 
-                set(_iconName "icon-${_size}-${_fileBaseName}.png")
+                set(_iconName "icon-${_size}-${png}.png")
 
                 if (${_size} STREQUAL "xs")
                     set(_iconSize 24)
@@ -198,17 +189,17 @@ function(hbn_sfos_gen_icons target_name)
                 endif()
 
                 if (${_iconSize} GREATER 0)
-                    if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName})
-                        execute_process(COMMAND bash "-c" "${PRINTFEXE} %.0f $(echo '${_scale} * ${_iconSize}' | ${BCEXE})" OUTPUT_VARIABLE _scaledSize)
-                        add_custom_command(TARGET ${target_name} POST_BUILD
-                            COMMAND ${RSVGCONV} --width=${_scaledSize} --height=${_scaledSize} --keep-aspect-ratio --output=${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName} ${_inputFile}
-                            COMMENT "Generating theme icon ${_iconName} for scale ${_scale}")
-                    endif ()
-                    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName} DESTINATION ${_installDest}/z${_scale})
+                    execute_process(COMMAND bash "-c" "${PRINTFEXE} %.0f $(echo '${_scale} * ${_iconSize}' | ${BCEXE})" OUTPUT_VARIABLE _scaledSize)
+                    set(_outputFile ${CMAKE_CURRENT_BINARY_DIR}/icons/z${_scale}/${_iconName})
+                    add_custom_command(OUTPUT ${_outputFile}
+                        COMMAND ${RSVGCONV}
+                        ARGS --width=${_scaledSize} --height=${_scaledSize} --keep-aspect-ratio --output=${_outputFile} ${_abs_FILE}
+                        COMMENT "Generating theme icon ${_iconName} for scale ${_scale}")
+                    install(FILES ${_outputFile} DESTINATION ${_installDest}/z${_scale})
+                    list(APPEND ${_png_files} ${_outputFile})
                 endif()
             endforeach(_size)
         endforeach(_scale)
-
-    endif()
-
-endfunction(hbn_sfos_gen_icons)
+    endforeach()
+    set(${_png_files} ${${_png_files}} PARENT_SCOPE)
+endfunction()
