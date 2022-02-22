@@ -5,106 +5,85 @@
 HBNSfosGenerateTranslations
 ------------------
 
-This module provides the ``hbn_sfos_gen_translation`` function to generate
+This module provides the ``hbn_sfos_add_translation`` function to generate
 compiled translation files (.qm).
 
 ::
 
-  hbn_sfos_gen_translation(<target_name>
-      INPUT_FILE <input_file>
-      [INSTALL_DESTINATION <install_destination>]
-      [MARK_UNTRANSLATED <prefix>]
-      [IDBASED]
-      [COMPRESS]
-      [NOUNFINISHED]
-      [REMOVEIDENTICAL]
-  )
+  hbn_sfos_add_translation(<VAR> file1.ts [file2.ts] [OPTIONS ...])
 
-This function adds a traget called <target_name> for the generation of
-compiled translation files. It requires Qt’s lrelease program to perform
-the compilation.
+Calls `lrelease` on each `.ts` file paswed as an argument, generating
+`.qm` files. The paths of the generated files are added to <VAR>. Should
+be used together with `add_custom_target`. Internally this used `qt5_add_translation`
+or `qt6_add_translation` when the Qt version is newer than 5.11.0,
+otherwise it uses a copied implementation of `qt5_add_translation` from
+Qt 5.11.0.
 
-``INPUT_FILE`` specifies the input file. Has to be a ts file.
+``OPTIONS`` can be used to pass additional options when `lrelease` is
+invoked. Yout can find possible options in the lrelease documentation.
 
-``INSTALL_DESTINATION`` specifies the install destination for the QM files.
-By default, if ``INSTALL_DESTINATION`` has not been set, translations are
-installed into ``${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/translations``.
+Example usage
 
-``MARK_UNTRANSLATED`` specifies a prefix for messages with no real translation.
-Will use the source text prefixed with the given string instead.
+.. code-blocks:: cmake
 
-``IDBASED`` specifies to use IDs instead of source strings for message keying.
+  set(tsFiles
+      helloworld_en.ts
+      hellowordl_de.ts)
 
-``COMRESS`` the QM files.
+  hbn_sfos_add_translation(qmFiles ${tsFiles} OPTIONS -idbased)
 
-``NOUNFINISHED`` is used to not include unfinished translations.
+  add_custom_target(tanslations ALL
+                    DEPENDS ${qmFiles}
+                    SOURCES ${tsFiles})
 
-``REMOVEIDENTICAL`` omits messages where the translated text is the same
-as the source text.
+  install(FILES ${qmFiles}
+          DESTINATION ${CMAKE_INSTALL_LOCALEDIR}
+          COMPONENT runtime)
 
 #]=======================================================================]
 
 include(CMakeParseArguments)
 
-function(hbn_sfos_gen_translation target_name)
-    set(options IDBASED COMPRESS NOUNFINISHED REMOVEIDENTICAL )
-    set(oneValueArgs INPUT_FILE INSTALL_DESTINATION MARK_UNTRANSLATED)
-    set(multiValueArgs )
-    cmake_parse_arguments(ARGS "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+function(_hbn_sfos_add_trans_func _qm_files)
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs OPTIONS)
 
-    # check required args
-    list(APPEND _req_args INPUT_FILE)
-    foreach(_arg_name ${_req_args})
-        if(NOT DEFINED ARGS_${_arg_name})
-            message(FATAL_ERROR "${_arg_name} needs to be defined when calling hbn_sfos_gen_icons")
-        endif()
-    endforeach()
+    cmake_parse_arguments(_LRELEASE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(_lrelease_files ${_LRELEASE_UNPARSED_ARGUMENTS})
 
-    find_program(LRELEASE NAMES lrelease-qt6 lrelease6 lrelease-qt5 lrelease5 lrelease)
-    if (NOT LRELEASE)
-        message(FATAL_ERROR "Can not find lrelease executable")
-    endif()
-
-    get_filename_component(_inputFile ${ARGS_INPUT_FILE} ABSOLUTE)
-
-    if (NOT EXISTS ${_inputFile})
-        message(FATAL_ERROR "Can not find translation source file ${_inputFile}")
-    endif()
-
-    if (DEFINED ARGS_INSTALL_DESTINATION)
-            set(_installDest ${ARGS_INSTALL_DESTINATION})
+    foreach(_current_FILE ${_lrelease_files})
+        get_filename_component(_abs_FILE ${_current_FILE} ABSOLUTE)
+        get_filename_component(qm ${_abs_FILE} NAME)
+        # everything before the last dot has to be considered the file name (including other dots)
+        string(REGEX REPLACE "\\.[^.]*$" "" FILE_NAME ${qm})
+        get_source_file_property(output_location ${_abs_FILE} OUTPUT_LOCATION)
+        if(output_location)
+            file(MAKE_DIRECTORY "${output_location}")
+            set(qm "${output_location}/${FILE_NAME}.qm")
         else()
-            set(_installDest ${CMAKE_INSTALL_DATADIR}/harbour-${PROJECT_NAME}/translations)
+            set(qm "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.qm")
         endif()
 
-    if (NOT TARGET ${target_name})
-        add_custom_target(${target_name} ALL COMMENT "Generating translations")
-    endif()
-
-    set_property(TARGET ${target_name} APPEND PROPERTY SOURCES ${_inputFile})
-
-    get_filename_component(_fileBaseName ${_inputFile} NAME_WE)
-
-    set(_lreleaseArgs )
-
-    set(_optionArgs IDBASED COMPRESS NOUNFINISHED REMOVEIDENTICAL)
-    foreach(_optionArg ${_optionArgs})
-        if(ARGS_${_optionArg})
-            string(TOLOWER ${_optionArg} _argLow)
-            list(APPEND _lreleaseArgs -${_argLow})
-        endif()
+        add_custom_command(OUTPUT ${qm}
+            COMMAND ${Qt5_LRELEASE_EXECUTABLE}
+            ARGS ${_LRELEASE_OPTIONS} ${_abs_FILE} -qm ${qm}
+            DEPENDS ${_abs_FILE} VERBATIM
+        )
+        list(APPEND ${_qm_files} ${qm})
     endforeach()
+    set(${_qm_files} ${${_qm_files}} PARENT_SCOPE)
+endfunction()
 
-    set(_qmFile ${CMAKE_CURRENT_BINARY_DIR}/${_fileBaseName}.qm)
-
-    set(_lreleaseArgs ${_lreleaseArgs} ${_inputFile} -qm ${_qmFile})
-
-    add_custom_command(TARGET ${target_name} POST_BUILD
-        COMMAND ${LRELEASE} ARGS ${_lreleaseArgs}
-        COMMENT "Generating translation ${_fileBaseName}.qm"
-        VERBATIM
-    )
-
-    install(FILES ${_qmFile} DESTINATION ${_installDest})
-
-endfunction(hbn_sfos_gen_translation)
+function(hbn_sfos_add_translation _qm_files)
+    if (QT_VERSION VERSION_LESS "5.11.0")
+        _hbn_sfos_add_trans_func("${_qm_files}" ${ARGN})
+    else()
+        if(QT_DEFAULT_MAJOR_VERSION EQUAL 5)
+            qt5_add_translation("${_qm_files}" ${ARGN})
+        elseif(QT_DEFAULT_MAJOR_VERSION EQUAL 6)
+            qt6_add_translation("${_qm_files}" ${ARGN})
+        endif()
+    endif()
+    set("${_qm_files}" "${${_qm_files}}" PARENT_SCOPE)
+endfunction()
