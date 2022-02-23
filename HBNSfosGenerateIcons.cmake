@@ -54,8 +54,8 @@ for. By default, if no ``SCALES`` have been set, icons will be created for
 the folowing pixel ratios: 1.0, 1.25, 1.5, 1.75 and 2.0.
 
 ``SIZES`` specifies a list of icon sizes to generate. This accepts the
-following icon size indicators: xs, s, splus, m, l and xl. If ``SIZES``
-has not been set, this list is also the default for theme icons.
+following icon size indicators: xs, s, splus, m, l, xl, lock, and cover.
+If ``SIZES`` has not been set, xs, s, splus, m, l, and xl will be created
 
 ``INSTALL_DESTINATION`` specifies the install destination for theme icons.
 By default, if ``INSTALL_DESTINATION`` has not been set, theme icons are
@@ -173,7 +173,7 @@ function(hbn_sfos_add_icon _png_files)
 
                 if (${_size} STREQUAL "xs")
                     set(_iconSize 24)
-                elseif(${_size} STREQUAL "s")
+                elseif(${_size} STREQUAL "s" OR ${_size} STREQUAL "lock" OR ${_size} STREQUAL "cover")
                     set(_iconSize 32)
                 elseif(${_size} STREQUAL "splus")
                     set(_iconSize 48)
