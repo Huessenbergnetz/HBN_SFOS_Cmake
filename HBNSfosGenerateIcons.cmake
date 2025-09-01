@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: (C) 2022 Matthias Fehring / www.huessenbergnetz.de
+# SPDX-FileCopyrightText: (C) 2022-2025 Matthias Fehring / www.huessenbergnetz.de
 # SPDX-License-Identifier: BSD-3-Clause
 
 #[=======================================================================[.rst:
@@ -51,7 +51,7 @@ icon-s-feed.png and so on.
 
 ``SCALES`` specifies a list of scales/pixel ratios to generate theme icons
 for. By default, if no ``SCALES`` have been set, icons will be created for
-the folowing pixel ratios: 1.0, 1.25, 1.5, 1.75 and 2.0.
+the folowing pixel ratios: 1.0, 1.25, 1.5, 1.75, 2.0 and 2.5.
 
 ``SIZES`` specifies a list of icon sizes to generate. This accepts the
 following icon size indicators: xs, s, splus, m, l, xl, lock, and cover.
@@ -145,7 +145,7 @@ function(hbn_sfos_add_icon _png_files)
     if (DEFINED ARGS_SCALES)
         set(_scales ${ARGS_SCALES})
     else()
-        set(_scales 1.0 1.25 1.5 1.75 2.0)
+        set(_scales 1.0 1.25 1.5 1.75 2.0 2.5)
     endif()
 
     if (DEFINED ARGS_SIZES)
